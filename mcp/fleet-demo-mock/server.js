@@ -2,8 +2,9 @@
 /**
  * FleetHeal synthetic fleet-ops demo MCP server
  * Seed: TRK-4821 / DVIR-9912 critical OOS brake
- * Optional live store: set FLEETHEAL_API_BASE=https://fleetheal.vercel.app
- *   then list_open_defects / get_dvir merge Vercel /api/fleet/* in real time.
+ *
+ * Live DVIR UI: set FLEETHEAL_API_BASE=https://fleetheal.vercel.app
+ * so list_open_defects / get_dvir read the Vercel store in real time.
  */
 
 import { createInterface } from "node:readline";
@@ -39,7 +40,8 @@ const READ_TOOLS = [
   },
   {
     name: "get_dvir",
-    description: "Fetch a DVIR / inspection by id (e.g. DVIR-9912). Live UI submissions appear when FLEETHEAL_API_BASE is set.",
+    description:
+      "Fetch a DVIR / inspection by id (e.g. DVIR-9912). Live UI submissions appear when FLEETHEAL_API_BASE is set.",
     inputSchema: {
       type: "object",
       properties: { dvir_id: { type: "string" } },
@@ -48,7 +50,8 @@ const READ_TOOLS = [
   },
   {
     name: "list_open_defects",
-    description: "List open defects (optional vehicle_id). Includes crack-related flags from live DVIR UI when FLEETHEAL_API_BASE is set.",
+    description:
+      "List open defects (optional vehicle_id / crack_related / today). Includes crack flags from live DVIR UI when FLEETHEAL_API_BASE is set.",
     inputSchema: {
       type: "object",
       properties: {
@@ -99,7 +102,8 @@ const READ_TOOLS = [
 const WRITE_TOOLS = [
   {
     name: "ground_vehicle",
-    description: "Ground a vehicle (OOS / do-not-dispatch). REQUIRES HUMAN APPROVAL.",
+    description:
+      "Ground a vehicle (OOS / do-not-dispatch). REQUIRES HUMAN APPROVAL.",
     approval_required: true,
     inputSchema: {
       type: "object",
@@ -163,11 +167,11 @@ const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
 function ok(id, result) {
   return { jsonrpc: "2.0", id, result };
 }
-function err(id, code, message) {
+function fail(id, code, message) {
   return { jsonrpc: "2.0", id, error: { code, message } };
 }
 function findVehicle(id) {
-  return seed.vehicles.find((v) => v.id === id);
+  return (seed.vehicles || []).find((v) => v.id === id);
 }
 
 async function fetchLive(path) {
@@ -222,7 +226,7 @@ function executeWrite(toolName, args) {
         status: "open",
         priority: args.priority,
         summary: args.summary,
-        bay: args.bay || v.home_shop || v.home_shop,
+        bay: args.bay || v.home_shop || v.home_shop || "Bay-3",
         defect_id: args.defect_id || null,
         opened_at: at,
       };
@@ -278,22 +282,21 @@ async function callTool(name, args = {}) {
     case "get_dvir": {
       const live = await fetchLive("/api/fleet/state");
       if (live?.dvirs) {
-        const d = live.dvirs.find((x) => x.id === args.dvir_id);
-        if (d) return { ...d, source: "live_ui" };
+        const hit = live.dvirs.find((x) => x.id === args.dvir_id);
+        if (hit) return { ...hit, source: "live_ui" };
       }
       const d = (seed.dvirs || []).find((x) => x.id === args.dvir_id);
       if (!d) return { error: `dvir not found: ${args.dvir_id}` };
       return { ...d, source: "seed" };
     }
     case "list_open_defects": {
-      let list = [];
-      const live = await fetchLive(
-        args.crack_related
-          ? "/api/fleet/open-defects?crack=1"
-          : args.today
-            ? "/api/fleet/open-defects?today=1"
-            : "/api/fleet/open-defects"
-      );
+      let path = "/api/fleet/open-defects";
+      const qs = [];
+      if (args.crack_related) qs.push("crack=1");
+      if (args.today) qs.push("today=1");
+      if (qs.length) path += `?${qs.join("&")}`;
+      const live = await fetchLive(path);
+      let list;
       if (live?.open_defects) {
         list = live.open_defects.map((d) => ({ ...d, source: "live_ui" }));
       } else {
@@ -301,8 +304,12 @@ async function callTool(name, args = {}) {
           .filter((d) => d.status === "open")
           .map((d) => ({ ...d, source: "seed" }));
       }
-      if (args.vehicle_id) list = list.filter((d) => d.vehicle_id === args.vehicle_id);
-      if (args.crack_related) list = list.filter((d) => d.crack_related);
+      if (args.vehicle_id) {
+        list = list.filter((d) => d.vehicle_id === args.vehicle_id);
+      }
+      if (args.crack_related) {
+        list = list.filter((d) => d.crack_related);
+      }
       return {
         defects: list,
         count: list.length,
@@ -311,11 +318,15 @@ async function callTool(name, args = {}) {
       };
     }
     case "list_work_orders": {
-      const list = (seed.work_orders || []).filter((w) => w.vehicle_id === args.vehicle_id);
+      const list = (seed.work_orders || []).filter(
+        (w) => w.vehicle_id === args.vehicle_id
+      );
       return { work_orders: list, count: list.length };
     }
     case "get_pm_status": {
-      const list = (seed.pm_status || []).filter((p) => p.vehicle_id === args.vehicle_id);
+      const list = (seed.pm_status || []).filter(
+        (p) => p.vehicle_id === args.vehicle_id
+      );
       return { pm: list };
     }
     case "get_telematics_snapshot": {
@@ -324,8 +335,16 @@ async function callTool(name, args = {}) {
       return t;
     }
     case "get_yard_detention": {
-      const y = (seed.yard_detention || []).find((x) => x.vehicle_id === args.vehicle_id);
-      return y || { vehicle_id: args.vehicle_id, detained: false, notes: "no yard record" };
+      const y = (seed.yard_detention || []).find(
+        (x) => x.vehicle_id === args.vehicle_id
+      );
+      return (
+        y || {
+          vehicle_id: args.vehicle_id,
+          detained: false,
+          notes: "no yard record",
+        }
+      );
     }
     case "ground_vehicle":
     case "create_work_order":
@@ -382,7 +401,9 @@ async function handle(msg) {
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
-        annotations: t.approval_required ? { approval_required: true } : undefined,
+        annotations: t.approval_required
+          ? { approval_required: true }
+          : undefined,
       })),
     });
   }
@@ -398,7 +419,7 @@ async function handle(msg) {
     });
   }
   if (method === "ping") return ok(id, {});
-  return err(id, -32601, `Method not found: ${method}`);
+  return fail(id, -32601, `Method not found: ${method}`);
 }
 
 const rl = createInterface({ input: process.stdin, terminal: false });
@@ -417,13 +438,14 @@ rl.on("line", async (line) => {
     if (resp) process.stdout.write(JSON.stringify(resp) + "\n");
   } catch (e) {
     process.stdout.write(
-      JSON.stringify(err(msg.id ?? null, -32603, String(e?.message || e))) + "\n"
+      JSON.stringify(fail(msg.id ?? null, -32603, String(e?.message || e))) +
+        "\n"
     );
   }
 });
 
 process.stderr.write(
   `[fleetheal] fleet-demo-mock MCP on stdio (seed=${SEED_PATH})\n` +
-    `[fleetheal] FLEETHEAL_API_BASE=${API_BASE || "(unset — using seed only)"}\n` +
+    `[fleetheal] FLEETHEAL_API_BASE=${API_BASE || "(unset — seed only)"}\n` +
     `[fleetheal] demo: TRK-4821 / DVIR-9912 | AUTO_APPROVE=${AUTO_APPROVE}\n`
 );
