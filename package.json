@@ -1,13 +1,25 @@
 {
   "name": "fleetheal",
   "version": "0.1.0",
-  "private": true,
   "description": "FleetHeal — TrueForge hackathon demo with synthetic fleet data and mock MCP (no proprietary product code)",
+  "type": "module",
+  "bin": {
+    "fleetheal-mcp": "./mcp/fleet-demo-mock/server.js"
+  },
   "scripts": {
     "start": "node mcp/fleet-demo-mock/server.js",
     "mcp": "node mcp/fleet-demo-mock/server.js"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "files": [
+    "mcp/",
+    "demo/",
+    "agents/",
+    "skills/",
+    "eval/",
+    "README.md",
+    "SECURITY.md"
+  ]
 }
