@@ -11,6 +11,10 @@ Synthetic fleet-ops MCP server for FleetHeal hackathon demos (DVIR / OOS / work-
 | Defect | Critical LH rear service brake — OOS candidate |
 | Dispatch | Due on route tomorrow 06:00 PT |
 
+## Live store (TrueFoundry Hosted Stdio)
+
+Set `FLEETHEAL_API_BASE` to the Vercel origin (no trailing slash), e.g. `https://fleetheal.vercel.app`. Every tool call `GET`s `{FLEETHEAL_API_BASE}/api/fleet/state` so UI-submitted DVIRs appear without redeploying MCP. Unset = local `demo/seed.json`.
+
 ## Run
 
 ```bash
