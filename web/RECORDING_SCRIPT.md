@@ -1,23 +1,29 @@
-# FleetHeal winning recording script (≈3–4 min)
+# FleetHeal — recording script (win the hackathon)
 
-## Live URLs
+## Live links
 - **DVIR UI:** https://fleetheal.vercel.app
+- **API state:** https://fleetheal.vercel.app/api/fleet/state
 - **Repo:** https://github.com/OXmaint/fleetheal
-- **TrueFoundry:** oxmaint.truefoundry.cloud → MCP `fleet-demo-mock`
-- **Env on MCP:** `FLEETHEAL_API_BASE=https://fleetheal.vercel.app`
+- **TrueFoundry MCP:** `fleet-demo-mock` (set env `FLEETHEAL_API_BASE=https://fleetheal.vercel.app`)
 
-## Story arc (say this)
-1. Drivers submit DVIRs in a real app (not a chat toy).
-2. TrueFoundry MCP Gateway is the production harness: same tools for ChatGPT, Claude, and Grok.
-3. Reads are free; writes pause for human approval (`ground_vehicle` → `approval_required`).
+## 3-minute arc
+1. **Problem** — Chatbots can call tools, but production fleet ops need a harness: least privilege, approvals, audit.
+2. **UI** — Real DVIR intake with **crack-related** flag → stored for agents.
+3. **Harness** — Same TrueFoundry MCP Gateway for ChatGPT + Claude + Grok.
+4. **Climax** — `ground_vehicle` returns `approval_required` (human gate).
+5. **Loop** — Second UI submit → ask again → new defect visible (no MCP redeploy).
 
-## Takes
-1. **UI** — Open https://fleetheal.vercel.app → show open defects → submit a **crack-related** DVIR → copy investigate prompt.
-2. **ChatGPT (or Claude)** — paste prompt / ask: “Any crack-related open defects or DVIRs submitted today for TRK-4821?” → show tool calls via TrueFoundry.
-3. **Action** — “Ground TRK-4821 for the crack defect.” → show `approval_required` pause.
-4. **Loop** — submit a second defect in UI → ask again → new defect appears (no MCP redeploy).
+## Shot list
+1. Open https://fleetheal.vercel.app — show live open defects (TRK-4821 brake + crack).
+2. Submit another crack DVIR (leave checkbox on) — show success + investigate prompt.
+3. ChatGPT/Claude with fleet MCP: *“Any crack-related open defects on TRK-4821 today?”*
+4. Show tool call `list_open_defects` / `get_dvir`.
+5. *“Ground TRK-4821 for the frame crack.”* → show `approval_required`.
+6. One line for judges: “Chatbots talk; TrueFoundry stops irreversible writes.”
 
-## Judge one-liners
-- “Chatbots talk; TrueFoundry harness stops irreversible writes.”
-- “Same MCP channel for ChatGPT, Claude, and Grok.”
-- “UI write is immediately readable by MCP — no redeploy.”
+## TrueFoundry env (if not set)
+On MCP `fleet-demo-mock` / hosted stdio:
+```
+FLEETHEAL_API_BASE=https://fleetheal.vercel.app
+```
+Redeploy/restart MCP after saving.

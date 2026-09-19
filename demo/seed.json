@@ -35,16 +35,40 @@
       "inspected_at": "2026-09-19T11:42:00-07:00",
       "location": "Santa Clara Yard — Lane B",
       "overall": "UNSATISFACTORY",
+      "crack_related": false,
       "defects": [
         {
           "code": "BRAKE-SVC-LH-REAR",
           "system": "service_brakes",
           "severity": "critical",
           "oos_candidate": true,
+          "crack_related": false,
           "description": "Left-rear service brake chamber pushrod travel exceeds limit; audible air leak under apply. Pads appear glazed; rotor heat-checked.",
           "photos": [
             { "id": "PH-9912-01", "label": "LH rear chamber", "present": true },
             { "id": "PH-9912-02", "label": "Pushrod travel gauge", "present": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DVIR-9007",
+      "vehicle_id": "TRK-4821",
+      "inspector": "Ram Upadhyay",
+      "inspected_at": "2026-09-19T15:10:00-07:00",
+      "location": "Santa Clara Yard — Lane C",
+      "overall": "UNSATISFACTORY",
+      "crack_related": true,
+      "defects": [
+        {
+          "code": "CRACK-FRAME-LH",
+          "system": "frame_body",
+          "severity": "critical",
+          "oos_candidate": true,
+          "crack_related": true,
+          "description": "Visible crack on LH frame rail near suspension hanger; rust staining at crack tip. Unit is OOS candidate until welded/replaced and reinspected.",
+          "photos": [
+            { "id": "PH-9007-01", "label": "LH frame crack tip", "present": true }
           ]
         }
       ]
@@ -56,37 +80,18 @@
       "inspected_at": "2026-09-19T08:15:00-07:00",
       "location": "Santa Clara Yard — Lane A",
       "overall": "SATISFACTORY_WITH_NOTES",
+      "crack_related": true,
       "defects": [
         {
           "code": "LIGHT-MARKER-RR",
           "system": "lighting",
           "severity": "minor",
           "oos_candidate": false,
+          "crack_related": true,
           "description": "Right-rear marker light intermittent; lens cracked but illuminates.",
           "photos": [
             { "id": "PH-8801-01", "label": "RR marker", "present": true }
           ]
-        }
-      ]
-    },
-    {
-      "id": "DVIR-7700",
-      "vehicle_id": "TRK-4821",
-      "inspector": "A. Patel",
-      "inspected_at": "2026-09-18T16:00:00-07:00",
-      "location": "Stockton drop yard",
-      "overall": "UNSATISFACTORY",
-      "defects": [
-        {
-          "code": "BRAKE-SVC-LH-REAR",
-          "system": "service_brakes",
-          "severity": "critical",
-          "oos_candidate": true,
-          "description": "Same unit wrong-linked test fixture: DVIR claims TRK-4821 but photo metadata tagged TRK-1107.",
-          "photos": [
-            { "id": "PH-7700-01", "label": "ambiguous unit plate", "present": false }
-          ],
-          "meta_flags": ["wrong_unit_suspect", "missing_evidence"]
         }
       ]
     }
@@ -99,7 +104,20 @@
       "code": "BRAKE-SVC-LH-REAR",
       "severity": "critical",
       "status": "open",
-      "opened_at": "2026-09-19T11:42:00-07:00"
+      "crack_related": false,
+      "opened_at": "2026-09-19T11:42:00-07:00",
+      "description": "Critical LH rear service brake — OOS candidate"
+    },
+    {
+      "id": "DEF-9007",
+      "vehicle_id": "TRK-4821",
+      "dvir_id": "DVIR-9007",
+      "code": "CRACK-FRAME-LH",
+      "severity": "critical",
+      "status": "open",
+      "crack_related": true,
+      "opened_at": "2026-09-19T15:10:00-07:00",
+      "description": "Visible crack on LH frame rail near suspension hanger — OOS candidate"
     },
     {
       "id": "DEF-3302",
@@ -108,7 +126,9 @@
       "code": "LIGHT-MARKER-RR",
       "severity": "minor",
       "status": "open",
-      "opened_at": "2026-09-19T08:15:00-07:00"
+      "crack_related": true,
+      "opened_at": "2026-09-19T08:15:00-07:00",
+      "description": "RR marker lens cracked; still illuminates"
     }
   ],
   "work_orders": [
@@ -148,7 +168,8 @@
   "parts_catalog": [
     { "sku": "PAD-FL-RR-STD", "name": "Rear brake pad set (Freightliner)", "qty_on_hand": 4 },
     { "sku": "CHAMBER-T30", "name": "Brake chamber T30", "qty_on_hand": 2 },
-    { "sku": "MARKER-LED-RR", "name": "LED marker lamp RR", "qty_on_hand": 12 }
+    { "sku": "MARKER-LED-RR", "name": "LED marker lamp RR", "qty_on_hand": 12 },
+    { "sku": "FRAME-RAIL-LH-4821", "name": "LH frame rail section Cascadia", "qty_on_hand": 1 }
   ],
   "telematics": [
     {
@@ -178,7 +199,7 @@
       "yard": "Santa Clara",
       "detained": false,
       "gate_status": "cleared",
-      "notes": "Scheduled out tomorrow 06:00 PT"
+      "notes": "Scheduled out tomorrow 06:00 PT — hold if crack OOS confirmed"
     }
   ]
 }
