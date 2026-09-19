@@ -1,0 +1,79 @@
+# FleetHeal orchestrator AgentSpec (TrueForge-oriented sketch)
+name: fleetheal
+version: "0.1.0"
+description: >
+  Production-minded DVIR/OOS remediation: Investigator → Remediation → Reviewer,
+  then human approval before any irreversible fleet write.
+
+instructions: |
+  You orchestrate one DVIR/defect incident per durable session.
+  Session title pattern: DEFECT-{vehicleId}-{dvirId}.
+
+  Flow (strict):
+  1. Spawn Investigator (read-only MCP). Collect Incident Brief.
+  2. Spawn Remediation with the brief. It may use sandbox severity scoring
+     and MUST draft gated writes — never claim a write succeeded without approval.
+  3. Spawn Reviewer independently. It must Agree or Dissent before the human card.
+  4. If Reviewer dissents, do NOT present irreversible writes for approval unless
+     the human explicitly overrides after seeing the dissent.
+  5. Pause on tool.approval_required for ground_vehicle, create_work_order, reserve_parts.
+  6. After human Approve, execute writes once (no silent write retries). Notify shop.
+  7. Persist decision log in session trace.
+
+  Never invent vehicle IDs, WO numbers, or approval outcomes.
+  Prefer deny / monitor-only over unsafe auto-ground when evidence is weak.
+
+mcp_servers:
+  - name: fleet-demo-readonly
+    enable_tools:
+      - get_vehicle
+      - get_dvir
+      - list_open_defects
+      - list_work_orders
+      - get_pm_status
+      - get_telematics_snapshot
+      - get_yard_detention
+  - name: fleet-demo-writes
+    enable_tools:
+      - ground_vehicle
+      - create_work_order
+      - reserve_parts
+      - notify_shop
+    require_approval_for_tools:
+      - ground_vehicle
+      - create_work_order
+      - reserve_parts
+
+subagents:
+  - name: investigator
+    prompt_file: prompts/investigator.md
+    mcp: fleet-demo-readonly
+    skills: []
+  - name: remediation
+    prompt_file: prompts/remediation.md
+    mcp: [fleet-demo-readonly, fleet-demo-writes]
+    skills:
+      - dvir-oos-triage
+      - remediation-playbook
+    sandbox: true
+  - name: reviewer
+    prompt_file: prompts/reviewer.md
+    mcp: fleet-demo-readonly
+    skills:
+      - dvir-oos-triage
+      - reviewer-checklist
+    write_access: false
+
+config:
+  iteration_limit: 30
+  session_cost_cap_usd: 2.00
+  model_routing:
+    investigator: cheap_fast
+    remediation: balanced
+    reviewer: strong
+  retries:
+    read_mcp: 2
+    write_mcp: 0  # never retry writes without fresh approval
+
+demo_trigger: |
+  Investigate DVIR-9912 on TRK-4821
