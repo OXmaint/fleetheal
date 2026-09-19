@@ -3,6 +3,38 @@
 **Self-healing fleet ops on TrueForge.**  
 Investigate critical DVIR / OOS defects with least-privilege MCP, sandbox policy checks, and never ground a truck or open a work order until a human (plus an independent Reviewer) approves — with durable sessions and full traces.
 
+---
+
+## Live DVIR loop (hackathon demo)
+
+1. **UI on Vercel** — yard board lists DVIRs / open defects; `/submit` flags `crack_related` and POSTs to `/api/fleet/dvirs`.
+2. **Durable store** — `GET /api/fleet/state` (seed.json shape). Prefers **Vercel Blob** when `BLOB_READ_WRITE_TOKEN` is set; otherwise `/tmp/fleetheal-state.json` (ephemeral on serverless).
+3. **MCP reads live** — TrueFoundry Hosted Stdio `fleet-demo-mock` fetches that API on **every** tool call when `FLEETHEAL_API_BASE` is set. New submits appear without redeploying MCP.
+4. **TrueFoundry’s role** — MCP Gateway + approvals/traces between ChatGPT/Claude/Grok and the store. The store of record is Vercel; MCP is a live adapter, not a snapshot.
+
+### Deploy UI/API
+
+```bash
+npm i
+npx vercel --prod
+```
+
+In the Vercel project: **Storage → Blob → Create**, then ensure `BLOB_READ_WRITE_TOKEN` is set. Redeploy if you added the token after first deploy.
+
+### TrueFoundry Hosted Stdio env (exact)
+
+On the `fleet-demo-mock` Hosted Stdio server (the process that runs `npx fleetheal-mcp` / `npm run mcp`):
+
+```
+FLEETHEAL_API_BASE=https://YOUR-VERCEL-DEPLOYMENT.vercel.app
+```
+
+No trailing slash. After a UI submit, ask in the harness: *“any defective DVIRs submitted today?”* / *“list live open defects”* — answers come from that store. Submit one more crack DVIR, ask again; the new `DVIR-####` / `DEF-####` appear.
+
+Seed still includes **TRK-4821 / DVIR-9912**. Offline (`FLEETHEAL_API_BASE` unset) uses `demo/seed.json`.
+
+---
+
 > **Tagline:** Demo agents talk. Production agents stop.
 
 | | |
@@ -99,8 +131,7 @@ fleetheal-mvp/
 Requires **Node 18+**.
 
 ```bash
-cd /workspace/fleetheal-mvp
-npm start
+npm run mcp
 ```
 
 Smoke test (pipe JSON-RPC lines):

@@ -41,6 +41,7 @@
           "system": "service_brakes",
           "severity": "critical",
           "oos_candidate": true,
+          "crack_related": true,
           "description": "Left-rear service brake chamber pushrod travel exceeds limit; audible air leak under apply. Pads appear glazed; rotor heat-checked.",
           "photos": [
             { "id": "PH-9912-01", "label": "LH rear chamber", "present": true },
@@ -62,6 +63,7 @@
           "system": "lighting",
           "severity": "minor",
           "oos_candidate": false,
+          "crack_related": true,
           "description": "Right-rear marker light intermittent; lens cracked but illuminates.",
           "photos": [
             { "id": "PH-8801-01", "label": "RR marker", "present": true }
@@ -82,6 +84,7 @@
           "system": "service_brakes",
           "severity": "critical",
           "oos_candidate": true,
+          "crack_related": false,
           "description": "Same unit wrong-linked test fixture: DVIR claims TRK-4821 but photo metadata tagged TRK-1107.",
           "photos": [
             { "id": "PH-7700-01", "label": "ambiguous unit plate", "present": false }
@@ -99,7 +102,8 @@
       "code": "BRAKE-SVC-LH-REAR",
       "severity": "critical",
       "status": "open",
-      "opened_at": "2026-09-19T11:42:00-07:00"
+      "opened_at": "2026-09-19T11:42:00-07:00",
+      "crack_related": true
     },
     {
       "id": "DEF-3302",
@@ -108,7 +112,8 @@
       "code": "LIGHT-MARKER-RR",
       "severity": "minor",
       "status": "open",
-      "opened_at": "2026-09-19T08:15:00-07:00"
+      "opened_at": "2026-09-19T08:15:00-07:00",
+      "crack_related": true
     }
   ],
   "work_orders": [
