@@ -18,12 +18,51 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEED_PATH = join(__dirname, "../../demo/seed.json");
+const API_BASE = (process.env.FLEETHEAL_API_BASE || "").replace(/\/$/, "");
 
 const AUTO_APPROVE =
   process.env.APPROVED === "1" || process.argv.includes("--approve");
 
 /** @type {any} */
 let seed = JSON.parse(readFileSync(SEED_PATH, "utf8"));
+
+function apiHeaders() {
+  const headers = { Accept: "application/json", "Content-Type": "application/json" };
+  if (process.env.FLEETHEAL_API_KEY) headers["x-api-key"] = process.env.FLEETHEAL_API_KEY;
+  return headers;
+}
+
+/** Fresh fetch per tool call — never a stale snapshot when FLEETHEAL_API_BASE is set. */
+async function loadLiveState() {
+  if (!API_BASE) return seed;
+  try {
+    const res = await fetch(`${API_BASE}/api/fleet/state`, {
+      headers: apiHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data?.vehicles || !data?.dvirs) throw new Error("invalid state shape");
+    seed = data;
+    return seed;
+  } catch (error) {
+    process.stderr.write(`[fleetheal] live fetch failed; seed fallback: ${error}\n`);
+    return seed;
+  }
+}
+
+async function persistLiveState() {
+  if (!API_BASE) return;
+  try {
+    await fetch(`${API_BASE}/api/fleet/state`, {
+      method: "PUT",
+      headers: apiHeaders(),
+      body: JSON.stringify(seed),
+    });
+  } catch (error) {
+    process.stderr.write(`[fleetheal] live persist failed: ${error}\n`);
+  }
+}
 
 /** In-memory mutation log for demo writes */
 const audit = [];
@@ -53,10 +92,15 @@ const READ_TOOLS = [
   },
   {
     name: "list_open_defects",
-    description: "List open defects, optionally filtered by vehicle_id",
+    description:
+      "List live open defects. Optional filters: vehicle_id, submitted_today, crack_related",
     inputSchema: {
       type: "object",
-      properties: { vehicle_id: { type: "string" } },
+      properties: {
+        vehicle_id: { type: "string" },
+        submitted_today: { type: "boolean" },
+        crack_related: { type: "boolean" },
+      },
     },
   },
   {
@@ -200,6 +244,7 @@ function executeWrite(toolName, args) {
       v.grounded_at = at;
       const rec = { tool: toolName, args, at, result: { vehicle_id: v.id, status: "grounded" } };
       audit.push(rec);
+      persistLiveState();
       return rec.result;
     }
     case "create_work_order": {
@@ -218,6 +263,7 @@ function executeWrite(toolName, args) {
       seed.work_orders.push(wo);
       const rec = { tool: toolName, args, at, result: wo };
       audit.push(rec);
+      persistLiveState();
       return wo;
     }
     case "reserve_parts": {
@@ -236,6 +282,7 @@ function executeWrite(toolName, args) {
         reserved_at: at,
       };
       audit.push({ tool: toolName, args, at, result: reservation });
+      persistLiveState();
       return reservation;
     }
     case "notify_shop": {
@@ -247,6 +294,7 @@ function executeWrite(toolName, args) {
         sent_at: at,
       };
       audit.push({ tool: toolName, args, at, result: note });
+      persistLiveState();
       return note;
     }
     default:
@@ -254,7 +302,8 @@ function executeWrite(toolName, args) {
   }
 }
 
-function callTool(name, args = {}) {
+async function callTool(name, args = {}) {
+  await loadLiveState();
   switch (name) {
     case "get_vehicle": {
       const v = findVehicle(args.vehicle_id);
@@ -269,6 +318,11 @@ function callTool(name, args = {}) {
     case "list_open_defects": {
       let list = seed.open_defects.filter((d) => d.status === "open");
       if (args.vehicle_id) list = list.filter((d) => d.vehicle_id === args.vehicle_id);
+      if (args.crack_related === true) list = list.filter((d) => d.crack_related);
+      if (args.submitted_today === true) {
+        const today = new Date().toISOString().slice(0, 10);
+        list = list.filter((d) => String(d.opened_at || "").startsWith(today));
+      }
       return { defects: list, count: list.length };
     }
     case "list_work_orders": {
@@ -351,7 +405,7 @@ async function handle(msg) {
   if (method === "tools/call") {
     const name = params?.name;
     const args = params?.arguments || {};
-    const result = callTool(name, args);
+    const result = await callTool(name, args);
     const isError = Boolean(result?.error);
     return ok(id, {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -388,6 +442,7 @@ rl.on("line", async (line) => {
 
 process.stderr.write(
   `[fleetheal] fleet-demo-mock MCP listening on stdio (seed=${SEED_PATH})\n` +
+    `[fleetheal] live API: ${API_BASE || "off (local seed fallback)"}\n` +
     `[fleetheal] demo seed: TRK-4821 / DVIR-9912 OOS brake | AUTO_APPROVE=${AUTO_APPROVE}\n` +
     `[fleetheal] try: {"jsonrpc":"2.0","id":1,"method":"tools/list"}\n`
 );

@@ -11,10 +11,12 @@ Synthetic fleet-ops MCP server for FleetHeal hackathon demos (DVIR / OOS / work-
 | Defect | Critical LH rear service brake — OOS candidate |
 | Dispatch | Due on route tomorrow 06:00 PT |
 
-## Run
+## Live store (TrueFoundry)
+
+If `FLEETHEAL_API_BASE` is set (no trailing slash), every tool call `GET`s `{FLEETHEAL_API_BASE}/api/fleet/state` so new UI DVIRs appear without redeploy. Unset = local `demo/seed.json`.
 
 ```bash
-npm start
+npm run mcp
 # or: node mcp/fleet-demo-mock/server.js
 ```
 
