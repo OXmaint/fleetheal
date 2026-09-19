@@ -8,3 +8,5 @@ node_modules/
 out/
 .data/
 tsconfig.tsbuildinfo
+AGENTS.md
+CLAUDE.md

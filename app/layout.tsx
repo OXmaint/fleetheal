@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable} dark`}>
-      <body className="font-sans antialiased">
+      <body className={`${sans.className} antialiased`}>
         <div className="relative min-h-screen">
           <div className="scanline absolute inset-0 opacity-40" />
           <header className="relative z-10 border-b border-line bg-bg/80 backdrop-blur">

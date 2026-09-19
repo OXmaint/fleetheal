@@ -491,27 +491,30 @@ async function handle(msg) {
   return err(id, -32601, `Method not found: ${method}`);
 }
 
-// --- stdio JSON-RPC loop ---
+// --- stdio JSON-RPC loop (serialized so piped lines do not race) ---
 const rl = createInterface({ input: process.stdin, terminal: false });
+let lineQueue = Promise.resolve();
 
-rl.on("line", async (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  let msg;
-  try {
-    msg = JSON.parse(trimmed);
-  } catch {
-    process.stderr.write(`[fleet-demo-mock] bad json: ${trimmed.slice(0, 120)}\n`);
-    return;
-  }
-  try {
-    const resp = await handle(msg);
-    if (resp) process.stdout.write(JSON.stringify(resp) + "\n");
-  } catch (e) {
-    process.stdout.write(
-      JSON.stringify(err(msg.id ?? null, -32603, String(e?.message || e))) + "\n",
-    );
-  }
+rl.on("line", (line) => {
+  lineQueue = lineQueue.then(async () => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let msg;
+    try {
+      msg = JSON.parse(trimmed);
+    } catch {
+      process.stderr.write(`[fleet-demo-mock] bad json: ${trimmed.slice(0, 120)}\n`);
+      return;
+    }
+    try {
+      const resp = await handle(msg);
+      if (resp) process.stdout.write(JSON.stringify(resp) + "\n");
+    } catch (e) {
+      process.stdout.write(
+        JSON.stringify(err(msg.id ?? null, -32603, String(e?.message || e))) + "\n",
+      );
+    }
+  });
 });
 
 process.stderr.write(

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "/": ["./demo/seed.json"],
     "/api/**": ["./demo/seed.json"],
   },
+  agentRules: false,
 };
 
 export default nextConfig;
