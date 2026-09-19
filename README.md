@@ -68,10 +68,12 @@ Same winning harness shape as **Self-Healing IaC** and **FinGuard**, applied to 
 ## Repo layout
 
 ```
-fleetheal-mvp/
+fleetheal/
   README.md                 ← you are here
   PORTAL_SUBMISSION.md      ← form-ready paste fields
-  package.json              ← npm start → mock MCP
+  package.json              ← npm start → mock MCP; npm run dev → DVIR UI
+  app/                      ← Next.js App Router (intake UI + /api/fleet)
+  lib/                      ← shared store + seed-compatible types
   agents/
     fleetheal.yaml          ← orchestrator AgentSpec
     prompts/
@@ -83,7 +85,7 @@ fleetheal-mvp/
     remediation-playbook.md
     reviewer-checklist.md
   mcp/fleet-demo-mock/
-    server.js               ← stdio JSON-RPC MCP mock
+    server.js               ← stdio JSON-RPC MCP mock (optional HTTP store)
     README.md
   demo/
     seed.json               ← TRK-4821 OOS brake + fixtures
@@ -121,6 +123,70 @@ Demo helpers: `approve_pending`, `deny_pending`, `get_audit_log`.
 ```
 Investigate DVIR-9912 on TRK-4821
 ```
+
+Local web UI (does not replace MCP):
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 — file a DVIR, then use the success-page prompt with the MCP.
+
+---
+
+## Vercel DVIR UI
+
+Public intake UI + shared fleet store, same Vercel app. Synthetic `demo/seed.json` only.
+
+### What ships
+
+| Surface | Purpose |
+|---|---|
+| `/` | Recent DVIRs, open defects, submit form |
+| `/dvir/{id}` | Record + copy-paste `Investigate {dvir_id} on {vehicle_id}` |
+| `GET /api/fleet/state` | Full store (seed.json shape + `_meta`) |
+| `POST /api/fleet/dvirs` | Create DVIR + open defect (`DVIR-XXXX` / `DEF-XXXX`) |
+| `GET /api/fleet/dvirs/:id` | Single DVIR |
+| `GET /api/fleet/vehicles/:id` | Single vehicle |
+| `POST /api/fleet/vehicles/:id/ground` | MCP write (after approval) |
+| `POST /api/fleet/work-orders` | MCP write (after approval) |
+| `POST /api/fleet/parts/reserve` | MCP write (after approval) |
+
+### Deploy
+
+1. Import [OXmaint/fleetheal](https://github.com/OXmaint/fleetheal) into Vercel (framework: Next.js). Use the repo root. Hosted Stdio can still run `node mcp/fleet-demo-mock/server.js` (zero runtime imports beyond Node) even though the web app’s npm dependencies include Next.js.
+2. Build command is `next build` (`vercel.json`). Vercel serves the App Router; local `npm start` remains the MCP.
+3. Optional durable store (pick one):
+   - **Vercel Blob:** create a Blob store → `BLOB_READ_WRITE_TOKEN` is injected. JSON key: `fleetheal/fleet-state.json`.
+   - **Upstash Redis:** `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`.
+4. If neither token is set, Vercel uses **in-memory + seed** and `/` shows a multi-instance warning. Local `npm run dev` writes `.data/fleet-state.json` instead.
+5. Redeploy after adding env vars. Confirm `GET https://<your-app>.vercel.app/api/fleet/health`.
+
+Copy `.env.example` for the full list. **No secrets are required** to deploy a working demo.
+
+### TrueFoundry Hosted Stdio
+
+After the Vercel URL is live, set this on the MCP server (Hosted Stdio env):
+
+```
+FLEETHEAL_API_BASE=https://fleetheal.vercel.app
+```
+
+Use your real deployment host (no trailing slash). Leave it unset for offline `npx` / `npm start` demos — tools keep reading `demo/seed.json`.
+
+Writes (`ground_vehicle`, `create_work_order`, `reserve_parts`) POST to the API when the env is set; if the API is down they apply in-memory and return a `note`. They still return `approval_required` until a human (or `APPROVED=1`) approves.
+
+### Judge demo script (UI → agent)
+
+1. Open the Vercel (or `npm run dev`) intake UI.
+2. File a **critical / OOS** DVIR on `TRK-4821` (or any seeded unit).
+3. On the success page, copy `Investigate DVIR-XXXX on TRK-YYYY`.
+4. In ChatGPT / Claude on TrueForge (Hosted Stdio with `FLEETHEAL_API_BASE`), paste that prompt.
+5. Investigator `get_dvir` returns the new record. Remediation proposes ground + P1 WO. Write tools pause with **`approval_required`**.
+6. Shop lead approves (film the pause). Optional: deny path.
+
+Seeded fallback if you skip the form: `Investigate DVIR-9912 on TRK-4821`.
 
 ---
 
@@ -165,7 +231,7 @@ Score: policy accuracy · approval hit-rate on irreversible tools · false-groun
 
 ## MVP vs stretch
 
-**This scaffold (MVP backup):** agent specs · mock MCP · skills · eval cases · judge README · portal paste  
+**This scaffold:** agent specs · mock MCP · skills · eval cases · judge README · portal paste · **Vercel DVIR intake UI + shared store API**
 
 **Stretch:** live TrueForge UI · Slack MCP · yard API reads · AI Gateway budgets · eval CLI runner dashboard  
 

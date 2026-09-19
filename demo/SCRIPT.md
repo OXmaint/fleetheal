@@ -2,6 +2,8 @@
 
 **Setup:** Mock MCP running (`npm start`); shop-lead persona ready; seed TRK-4821 / DVIR-9912.
 
+**UI path (stretch for judges):** Deploy / run the DVIR intake (`npm run dev` or Vercel). File a new critical DVIR, copy `Investigate {dvir_id} on {vehicle_id}`, and set `FLEETHEAL_API_BASE` on TrueFoundry Hosted Stdio so the agent sees the new IDs. Write tools still pause on `approval_required`.
+
 | Time | What judges see | What to say |
 |---|---|---|
 | 0:00–0:25 | Problem → live UI | “Fleets already capture digital DVIR. Production needs least privilege, a human gate, and traces — that’s FleetHeal on TrueForge.” |

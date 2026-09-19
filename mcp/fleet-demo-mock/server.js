@@ -9,6 +9,11 @@
  *          get_pm_status, get_telematics_snapshot, get_yard_detention
  *   WRITE: ground_vehicle, create_work_order, reserve_parts, notify_shop
  *          (writes return approval_required until --approve or APPROVED=1)
+ *
+ * When FLEETHEAL_API_BASE is set (e.g. https://fleetheal.vercel.app), reads
+ * and writes go through that app's /api/fleet/* store so UI-created DVIRs
+ * are visible to ChatGPT/Claude. Without the env var, behavior is unchanged:
+ * local demo/seed.json plus in-memory mutations.
  */
 
 import { createInterface } from "node:readline";
@@ -18,6 +23,7 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEED_PATH = join(__dirname, "../../demo/seed.json");
+const API_BASE = (process.env.FLEETHEAL_API_BASE || "").replace(/\/$/, "");
 
 const AUTO_APPROVE =
   process.env.APPROVED === "1" || process.argv.includes("--approve");
@@ -174,6 +180,57 @@ function findVehicle(id) {
   return seed.vehicles.find((v) => v.id === id);
 }
 
+function applyRemoteState(data) {
+  if (!data || data.error || !Array.isArray(data.vehicles) || !Array.isArray(data.dvirs)) {
+    return false;
+  }
+  const { _meta, ...rest } = data;
+  seed = rest;
+  return true;
+}
+
+/**
+ * @param {string} path
+ * @param {RequestInit & { body?: string }} [init]
+ */
+async function apiFetch(path, init = {}) {
+  if (!API_BASE) return null;
+  const url = `${API_BASE}${path}`;
+  try {
+    const headers = {
+      accept: "application/json",
+      ...(init.body ? { "content-type": "application/json" } : {}),
+      ...(init.headers || {}),
+    };
+    const res = await fetch(url, { ...init, headers });
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { error: text || `non-JSON from ${url}` };
+    }
+    if (!res.ok) {
+      return { error: data.error || `HTTP ${res.status} ${url}` };
+    }
+    return data;
+  } catch (e) {
+    return { error: `API unreachable ${url}: ${e?.message || e}` };
+  }
+}
+
+async function refreshFromApi() {
+  if (!API_BASE) return false;
+  const data = await apiFetch("/api/fleet/state");
+  if (!data || data.error) {
+    process.stderr.write(
+      `[fleetheal] API state failed, using last/local seed: ${data?.error || "empty"}\n`,
+    );
+    return false;
+  }
+  return applyRemoteState(data);
+}
+
 function gateWrite(toolName, args) {
   if (AUTO_APPROVE) return { approved: true };
   const approvalId = `APR-${approvalSeq++}`;
@@ -189,7 +246,7 @@ function gateWrite(toolName, args) {
   };
 }
 
-function executeWrite(toolName, args) {
+function executeWriteLocal(toolName, args) {
   const at = new Date().toISOString();
   switch (toolName) {
     case "ground_vehicle": {
@@ -254,37 +311,106 @@ function executeWrite(toolName, args) {
   }
 }
 
-function callTool(name, args = {}) {
+async function executeWriteViaApi(toolName, args) {
+  switch (toolName) {
+    case "ground_vehicle":
+      return apiFetch(`/api/fleet/vehicles/${encodeURIComponent(args.vehicle_id)}/ground`, {
+        method: "POST",
+        body: JSON.stringify({ reason: args.reason, defect_id: args.defect_id }),
+      });
+    case "create_work_order":
+      return apiFetch("/api/fleet/work-orders", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
+    case "reserve_parts":
+      return apiFetch("/api/fleet/parts/reserve", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
+    case "notify_shop":
+      return apiFetch("/api/fleet/notify", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
+    default:
+      return { error: `unknown write tool ${toolName}` };
+  }
+}
+
+async function executeWrite(toolName, args) {
+  const at = new Date().toISOString();
+  if (API_BASE) {
+    const remote = await executeWriteViaApi(toolName, args);
+    if (remote && !remote.error) {
+      const { _meta, ...result } = remote;
+      audit.push({ tool: toolName, args, at, result, via: "api" });
+      await refreshFromApi();
+      return result;
+    }
+    const local = executeWriteLocal(toolName, args);
+    return {
+      ...local,
+      note: `API write unavailable (${remote?.error || "no response"}); applied in-memory only`,
+    };
+  }
+  return executeWriteLocal(toolName, args);
+}
+
+async function callTool(name, args = {}) {
   switch (name) {
     case "get_vehicle": {
+      if (API_BASE) {
+        const remote = await apiFetch(
+          `/api/fleet/vehicles/${encodeURIComponent(args.vehicle_id)}`,
+        );
+        if (remote && !remote.error) return remote;
+        await refreshFromApi();
+      }
       const v = findVehicle(args.vehicle_id);
       if (!v) return { error: `vehicle not found: ${args.vehicle_id}` };
       return v;
     }
     case "get_dvir": {
+      if (API_BASE) {
+        const remote = await apiFetch(`/api/fleet/dvirs/${encodeURIComponent(args.dvir_id)}`);
+        if (remote && !remote.error) return remote;
+        await refreshFromApi();
+      }
       const d = seed.dvirs.find((x) => x.id === args.dvir_id);
       if (!d) return { error: `dvir not found: ${args.dvir_id}` };
       return d;
     }
     case "list_open_defects": {
+      if (API_BASE) await refreshFromApi();
       let list = seed.open_defects.filter((d) => d.status === "open");
       if (args.vehicle_id) list = list.filter((d) => d.vehicle_id === args.vehicle_id);
       return { defects: list, count: list.length };
     }
     case "list_work_orders": {
+      if (API_BASE) {
+        const remote = await apiFetch(
+          `/api/fleet/work-orders?vehicle_id=${encodeURIComponent(args.vehicle_id)}`,
+        );
+        if (remote && !remote.error) return remote;
+        await refreshFromApi();
+      }
       const list = seed.work_orders.filter((w) => w.vehicle_id === args.vehicle_id);
       return { work_orders: list, count: list.length };
     }
     case "get_pm_status": {
+      if (API_BASE) await refreshFromApi();
       const list = seed.pm_status.filter((p) => p.vehicle_id === args.vehicle_id);
       return { pm: list };
     }
     case "get_telematics_snapshot": {
+      if (API_BASE) await refreshFromApi();
       const t = seed.telematics.find((x) => x.vehicle_id === args.vehicle_id);
       if (!t) return { error: `no telematics for ${args.vehicle_id}` };
       return t;
     }
     case "get_yard_detention": {
+      if (API_BASE) await refreshFromApi();
       const y = seed.yard_detention.find((x) => x.vehicle_id === args.vehicle_id);
       return y || { vehicle_id: args.vehicle_id, detained: false, notes: "no yard record" };
     }
@@ -296,15 +422,13 @@ function callTool(name, args = {}) {
       return executeWrite(name, args);
     }
     case "notify_shop": {
-      // low-risk: execute without hard gate (approval preferred in production)
       return executeWrite(name, args);
     }
     case "approve_pending": {
-      // Demo helper: approve a pending write by approval_id
       const pending = pendingApprovals.get(args.approval_id);
       if (!pending) return { error: `unknown approval_id ${args.approval_id}` };
       pendingApprovals.delete(args.approval_id);
-      const result = executeWrite(pending.tool, pending.args);
+      const result = await executeWrite(pending.tool, pending.args);
       return { approved: true, approval_id: args.approval_id, executed: result };
     }
     case "deny_pending": {
@@ -332,7 +456,11 @@ async function handle(msg) {
   if (method === "initialize") {
     return ok(id, {
       protocolVersion: "2024-11-05",
-      serverInfo: { name: "fleet-demo-mock", version: "0.1.0" },
+      serverInfo: {
+        name: "fleet-demo-mock",
+        version: "0.2.0",
+        store: API_BASE || "local-seed",
+      },
       capabilities: { tools: {} },
     });
   }
@@ -351,7 +479,7 @@ async function handle(msg) {
   if (method === "tools/call") {
     const name = params?.name;
     const args = params?.arguments || {};
-    const result = callTool(name, args);
+    const result = await callTool(name, args);
     const isError = Boolean(result?.error);
     return ok(id, {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -381,7 +509,7 @@ rl.on("line", async (line) => {
     if (resp) process.stdout.write(JSON.stringify(resp) + "\n");
   } catch (e) {
     process.stdout.write(
-      JSON.stringify(err(msg.id ?? null, -32603, String(e?.message || e))) + "\n"
+      JSON.stringify(err(msg.id ?? null, -32603, String(e?.message || e))) + "\n",
     );
   }
 });
@@ -389,5 +517,6 @@ rl.on("line", async (line) => {
 process.stderr.write(
   `[fleetheal] fleet-demo-mock MCP listening on stdio (seed=${SEED_PATH})\n` +
     `[fleetheal] demo seed: TRK-4821 / DVIR-9912 OOS brake | AUTO_APPROVE=${AUTO_APPROVE}\n` +
-    `[fleetheal] try: {"jsonrpc":"2.0","id":1,"method":"tools/list"}\n`
+    `[fleetheal] store=${API_BASE ? `api ${API_BASE}` : "local seed.json (set FLEETHEAL_API_BASE to use the Vercel DVIR UI)"}\n` +
+    `[fleetheal] try: {"jsonrpc":"2.0","id":1,"method":"tools/list"}\n`,
 );

@@ -34,3 +34,23 @@ printf '%s\n' \
 Writes return `approval_required` unless `APPROVED=1` or `--approve`.
 
 Demo helpers: `approve_pending`, `deny_pending`, `get_audit_log`.
+
+## Shared HTTP store (`FLEETHEAL_API_BASE`)
+
+When this env is set (TrueFoundry Hosted Stdio after the Vercel DVIR UI is live), tools read from that origin instead of only `demo/seed.json`:
+
+```
+FLEETHEAL_API_BASE=https://fleetheal.vercel.app
+```
+
+| Tool | HTTP |
+|---|---|
+| `get_vehicle` | `GET /api/fleet/vehicles/:id` |
+| `get_dvir` | `GET /api/fleet/dvirs/:id` |
+| `list_open_defects` / PM / telematics / yard | `GET /api/fleet/state` then filter |
+| `list_work_orders` | `GET /api/fleet/work-orders?vehicle_id=` |
+| `ground_vehicle` | `POST /api/fleet/vehicles/:id/ground` |
+| `create_work_order` | `POST /api/fleet/work-orders` |
+| `reserve_parts` | `POST /api/fleet/parts/reserve` |
+
+If the env is omitted, behavior is unchanged (local seed + in-memory writes) so `npx` / `npm start` stay offline. If the API is unreachable, reads fall back to the last/local seed and writes apply in-memory with a `note`.
