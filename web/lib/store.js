@@ -62,9 +62,7 @@ function seed() {
 }
 
 export function getStore() {
-  if (!globalThis[globalKey]) {
-    globalThis[globalKey] = seed();
-  }
+  if (!globalThis[globalKey]) globalThis[globalKey] = seed();
   return globalThis[globalKey];
 }
 
@@ -74,16 +72,18 @@ export function saveStore(next) {
   return next;
 }
 
-export function createDvir(input) {
+export function createDvir(input = {}) {
   const store = getStore();
   const n = store.dvirs.length + 9000;
   const dvirId = input.dvir_id || `DVIR-${n}`;
   const defId = `DEF-${4400 + store.open_defects.length + 1}`;
   const now = new Date().toISOString();
-  const crack = Boolean(input.crack_related);
+  const crack = Boolean(input.crack_related ?? input.crack_related);
+  const oos = (input.oos_candidate ?? input.oos_candidate) !== false;
+  const vehicleId = input.vehicle_id || input.vehicle_id || 'TRK-4821';
   const dvir = {
     id: dvirId,
-    vehicle_id: input.vehicle_id || 'TRK-4821',
+    vehicle_id: vehicleId,
     inspector: input.inspector || 'Demo Inspector',
     inspected_at: now,
     location: input.location || 'Santa Clara Yard',
@@ -94,7 +94,7 @@ export function createDvir(input) {
         code: input.code || (crack ? 'CRACK-STRUCTURE' : 'DEFECT-GENERAL'),
         system: input.system || (crack ? 'frame_body' : 'general'),
         severity: input.severity || 'critical',
-        oos_candidate: input.oos_candidate !== false,
+        oos_candidate: oos,
         crack_related: crack,
         description: input.description || 'Submitted from FleetHeal DVIR UI',
       },
