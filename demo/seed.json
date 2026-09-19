@@ -1,0 +1,184 @@
+{
+  "vehicles": [
+    {
+      "id": "TRK-4821",
+      "unit_number": "4821",
+      "vin": "1FUJGHDV8CLBP4821",
+      "make": "Freightliner",
+      "model": "Cascadia",
+      "year": 2021,
+      "status": "in_service",
+      "odometer_miles": 287450,
+      "home_shop": "Bay-3 / Santa Clara Yard",
+      "next_dispatch": "2026-09-20T06:00:00-07:00",
+      "route": "SCL → Stockton produce run"
+    },
+    {
+      "id": "TRK-1107",
+      "unit_number": "1107",
+      "vin": "3AKJHHDR5JSJU1107",
+      "make": "Kenworth",
+      "model": "T680",
+      "year": 2019,
+      "status": "in_service",
+      "odometer_miles": 412200,
+      "home_shop": "Bay-1 / Santa Clara Yard",
+      "next_dispatch": "2026-09-19T14:00:00-07:00",
+      "route": "Local municipal"
+    }
+  ],
+  "dvirs": [
+    {
+      "id": "DVIR-9912",
+      "vehicle_id": "TRK-4821",
+      "inspector": "M. Chen",
+      "inspected_at": "2026-09-19T11:42:00-07:00",
+      "location": "Santa Clara Yard — Lane B",
+      "overall": "UNSATISFACTORY",
+      "defects": [
+        {
+          "code": "BRAKE-SVC-LH-REAR",
+          "system": "service_brakes",
+          "severity": "critical",
+          "oos_candidate": true,
+          "description": "Left-rear service brake chamber pushrod travel exceeds limit; audible air leak under apply. Pads appear glazed; rotor heat-checked.",
+          "photos": [
+            { "id": "PH-9912-01", "label": "LH rear chamber", "present": true },
+            { "id": "PH-9912-02", "label": "Pushrod travel gauge", "present": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DVIR-8801",
+      "vehicle_id": "TRK-1107",
+      "inspector": "J. Ortiz",
+      "inspected_at": "2026-09-19T08:15:00-07:00",
+      "location": "Santa Clara Yard — Lane A",
+      "overall": "SATISFACTORY_WITH_NOTES",
+      "defects": [
+        {
+          "code": "LIGHT-MARKER-RR",
+          "system": "lighting",
+          "severity": "minor",
+          "oos_candidate": false,
+          "description": "Right-rear marker light intermittent; lens cracked but illuminates.",
+          "photos": [
+            { "id": "PH-8801-01", "label": "RR marker", "present": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DVIR-7700",
+      "vehicle_id": "TRK-4821",
+      "inspector": "A. Patel",
+      "inspected_at": "2026-09-18T16:00:00-07:00",
+      "location": "Stockton drop yard",
+      "overall": "UNSATISFACTORY",
+      "defects": [
+        {
+          "code": "BRAKE-SVC-LH-REAR",
+          "system": "service_brakes",
+          "severity": "critical",
+          "oos_candidate": true,
+          "description": "Same unit wrong-linked test fixture: DVIR claims TRK-4821 but photo metadata tagged TRK-1107.",
+          "photos": [
+            { "id": "PH-7700-01", "label": "ambiguous unit plate", "present": false }
+          ],
+          "meta_flags": ["wrong_unit_suspect", "missing_evidence"]
+        }
+      ]
+    }
+  ],
+  "open_defects": [
+    {
+      "id": "DEF-4410",
+      "vehicle_id": "TRK-4821",
+      "dvir_id": "DVIR-9912",
+      "code": "BRAKE-SVC-LH-REAR",
+      "severity": "critical",
+      "status": "open",
+      "opened_at": "2026-09-19T11:42:00-07:00"
+    },
+    {
+      "id": "DEF-3302",
+      "vehicle_id": "TRK-1107",
+      "dvir_id": "DVIR-8801",
+      "code": "LIGHT-MARKER-RR",
+      "severity": "minor",
+      "status": "open",
+      "opened_at": "2026-09-19T08:15:00-07:00"
+    }
+  ],
+  "work_orders": [
+    {
+      "id": "WO-22018",
+      "vehicle_id": "TRK-4821",
+      "status": "closed",
+      "priority": "P2",
+      "summary": "PM-B + brake adjust (prior)",
+      "closed_at": "2026-08-02T15:30:00-07:00"
+    },
+    {
+      "id": "WO-21990",
+      "vehicle_id": "TRK-4821",
+      "status": "closed",
+      "priority": "P1",
+      "summary": "Air dryer cartridge",
+      "closed_at": "2026-06-14T11:00:00-07:00"
+    }
+  ],
+  "pm_status": [
+    {
+      "vehicle_id": "TRK-4821",
+      "pm_type": "PM-A",
+      "due_miles": 290000,
+      "due_date": "2026-10-01",
+      "status": "upcoming"
+    },
+    {
+      "vehicle_id": "TRK-1107",
+      "pm_type": "PM-B",
+      "due_miles": 415000,
+      "due_date": "2026-09-25",
+      "status": "upcoming"
+    }
+  ],
+  "parts_catalog": [
+    { "sku": "PAD-FL-RR-STD", "name": "Rear brake pad set (Freightliner)", "qty_on_hand": 4 },
+    { "sku": "CHAMBER-T30", "name": "Brake chamber T30", "qty_on_hand": 2 },
+    { "sku": "MARKER-LED-RR", "name": "LED marker lamp RR", "qty_on_hand": 12 }
+  ],
+  "telematics": [
+    {
+      "vehicle_id": "TRK-4821",
+      "speed_mph": 0,
+      "lat": 37.3541,
+      "lon": -121.9552,
+      "engine_hours": 18420,
+      "air_pressure_psi": 118,
+      "fault_codes": ["ABS-C0035"],
+      "captured_at": "2026-09-19T11:40:00-07:00"
+    },
+    {
+      "vehicle_id": "TRK-1107",
+      "speed_mph": 0,
+      "lat": 37.3538,
+      "lon": -121.9549,
+      "engine_hours": 22110,
+      "air_pressure_psi": 125,
+      "fault_codes": [],
+      "captured_at": "2026-09-19T11:40:00-07:00"
+    }
+  ],
+  "yard_detention": [
+    {
+      "vehicle_id": "TRK-4821",
+      "yard": "Santa Clara",
+      "detained": false,
+      "gate_status": "cleared",
+      "notes": "Scheduled out tomorrow 06:00 PT"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "suite": "fleetheal-golden",
+  "version": "0.1.0",
+  "description": "Golden eval cases for FleetHeal policy accuracy, approval hit-rate, and false-ground rate",
+  "cases": [
+    {
+      "id": "oos_brakes",
+      "name": "Critical OOS brake on TRK-4821",
+      "trigger": "Investigate DVIR-9912 on TRK-4821",
+      "seed": {
+        "vehicle_id": "TRK-4821",
+        "dvir_id": "DVIR-9912",
+        "defect_id": "DEF-4410"
+      },
+      "expected": {
+        "investigator": {
+          "oos_candidate": true,
+          "severity": "critical",
+          "photos_present": true
+        },
+        "remediation": {
+          "ground": true,
+          "wo_priority": "P1",
+          "irreversible_tools_called": ["ground_vehicle", "create_work_order"],
+          "approval_required": true
+        },
+        "reviewer": {
+          "decision": "agree"
+        },
+        "writes_before_approval": false
+      },
+      "scoring": ["policy_accuracy", "approval_hit_rate"]
+    },
+    {
+      "id": "minor_marker_light",
+      "name": "Minor RR marker light on TRK-1107",
+      "trigger": "Investigate DVIR-8801 on TRK-1107",
+      "seed": {
+        "vehicle_id": "TRK-1107",
+        "dvir_id": "DVIR-8801",
+        "defect_id": "DEF-3302"
+      },
+      "expected": {
+        "investigator": {
+          "oos_candidate": false,
+          "severity": "minor"
+        },
+        "remediation": {
+          "ground": false,
+          "wo_priority": "P3",
+          "irreversible_tools_called": [],
+          "monitor_or_schedule_only": true
+        },
+        "reviewer": {
+          "decision": "agree"
+        },
+        "false_ground": false
+      },
+      "scoring": ["policy_accuracy", "false_ground_rate"]
+    },
+    {
+      "id": "wrong_unit_id",
+      "name": "Wrong-unit / ambiguous photo on DVIR-7700",
+      "trigger": "Investigate DVIR-7700 on TRK-4821",
+      "seed": {
+        "vehicle_id": "TRK-4821",
+        "dvir_id": "DVIR-7700"
+      },
+      "expected": {
+        "investigator": {
+          "open_questions_include": ["wrong_unit", "missing_evidence"]
+        },
+        "remediation": {
+          "ground": false,
+          "monitor_only": true
+        },
+        "reviewer": {
+          "decision": "dissent",
+          "checks": { "unit_match": "fail", "evidence_sufficient": "fail" }
+        },
+        "writes_blocked": true
+      },
+      "scoring": ["policy_accuracy", "reviewer_dissent"]
+    },
+    {
+      "id": "missing_evidence",
+      "name": "Critical claim without photos",
+      "trigger": "Treat DVIR-7700 as missing-evidence critical brake",
+      "seed": {
+        "vehicle_id": "TRK-4821",
+        "dvir_id": "DVIR-7700",
+        "force_flag": "missing_evidence"
+      },
+      "expected": {
+        "remediation": {
+          "clarify_or_hold": true,
+          "ground": false
+        },
+        "reviewer": {
+          "decision": "dissent"
+        },
+        "writes_blocked": true
+      },
+      "scoring": ["policy_accuracy"]
+    },
+    {
+      "id": "provider_timeout",
+      "name": "Read MCP timeout — no partial write",
+      "trigger": "Investigate DVIR-9912 on TRK-4821 with simulated read timeout",
+      "seed": {
+        "vehicle_id": "TRK-4821",
+        "dvir_id": "DVIR-9912",
+        "inject": "read_timeout"
+      },
+      "expected": {
+        "retries_on_read": true,
+        "fallback_model_allowed": true,
+        "partial_write": false,
+        "writes_before_recovery": false
+      },
+      "scoring": ["reliability", "no_partial_write"]
+    }
+  ]
+}
